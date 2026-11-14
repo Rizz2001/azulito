@@ -156,3 +156,4 @@ class SettingsNotifier extends StateNotifier<StoreSettingsModel> {
     );
   }
 }
+

@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:auto_size_text/auto_size_text.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/clean_soft_pill.dart';
+import '../../../../core/widgets/sweet_crumb_progress_pill.dart';
 import '../../../pos/presentation/controllers/pos_controller.dart';
 import '../controllers/dashboard_controller.dart';
 
@@ -97,51 +101,36 @@ class DashboardView extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            alignment: WrapAlignment.spaceBetween,
             children: [
-              Row(
+              Wrap(
+                spacing: 10,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(9999),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.trending_up, color: Colors.white, size: 16),
-                        const SizedBox(width: 6),
-                        Text(
-                          '+${metrics.weeklyGrowthPercent}% esta semana',
-                          style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
-                        ),
-                      ],
-                    ),
+                  CleanSoftPill(
+                    text: '+${metrics.weeklyGrowthPercent}% esta semana',
+                    prefix: const Icon(Icons.trending_up, color: Colors.white, size: 16),
+                    backgroundColor: Colors.white.withOpacity(0.2),
+                    textColor: Colors.white,
+                    fontWeight: FontWeight.bold,
                   ),
-                  const SizedBox(width: 10),
                   Text(
                     'Azulito Market & POS • Reporte Ejecutivo',
                     style: GoogleFonts.inter(color: Colors.white.withOpacity(0.85), fontSize: 13),
                   ),
                 ],
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF10B981),
-                  borderRadius: BorderRadius.circular(9999),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.check_circle, color: Colors.white, size: 14),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Turno Activo',
-                      style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 11),
-                    ),
-                  ],
-                ),
+              CleanSoftPill(
+                text: 'Turno Activo',
+                prefix: const Icon(Icons.check_circle, color: Colors.white, size: 14),
+                backgroundColor: const Color(0xFF10B981),
+                textColor: Colors.white,
+                fontWeight: FontWeight.w700,
               ),
             ],
           ),
@@ -152,20 +141,24 @@ class DashboardView extends ConsumerWidget {
             style: GoogleFonts.inter(color: Colors.white.withOpacity(0.85), fontSize: 14, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 4),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(
-                '\$${metrics.totalRevenueUsd.toStringAsFixed(2)}',
-                style: GoogleFonts.inter(fontSize: 38, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -0.5),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                '≈ Bs. ${metrics.totalRevenueBs.toStringAsFixed(2)}',
-                style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white.withOpacity(0.9)),
-              ),
-            ],
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(
+                  '\$${metrics.totalRevenueUsd.toStringAsFixed(2)}',
+                  style: GoogleFonts.inter(fontSize: 38, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -0.5),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  '≈ Bs. ${metrics.totalRevenueBs.toStringAsFixed(2)}',
+                  style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white.withOpacity(0.9)),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 6),
           Text(
@@ -178,57 +171,67 @@ class DashboardView extends ConsumerWidget {
   }
 
   // --------------------------------------------------------------------------
-  // 2. CUADRÍCULA DE 4 KPIS EN BLANCO PURO
+  // 2. CUADRÍCULA DE 4 KPIS EN BLANCO PURO (AlignedGridView)
   // --------------------------------------------------------------------------
   Widget _buildKpisGrid(DashboardMetricsState metrics, double rate, Color primaryColor) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isNarrow = constraints.maxWidth < 900;
-        return GridView.count(
-          crossAxisCount: isNarrow ? 2 : 4,
+        final isUltraNarrow = constraints.maxWidth < 500;
+        final crossCount = isUltraNarrow ? 1 : (isNarrow ? 2 : 4);
+
+        return AlignedGridView.count(
+          crossAxisCount: crossCount,
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          childAspectRatio: isNarrow ? 1.7 : 1.8,
-          children: [
-            _buildKpiCard(
-              title: 'Ingresos Totales',
-              value: '\$${metrics.totalRevenueUsd.toStringAsFixed(2)}',
-              subtitle: 'Bs. ${metrics.totalRevenueBs.toStringAsFixed(2)}',
-              badgeText: '+24.8%',
-              badgeColor: AppColors.success,
-              icon: Icons.monetization_on_outlined,
-              iconColor: primaryColor,
-            ),
-            _buildKpiCard(
-              title: 'Utilidad Neta Estimada',
-              value: '\$${metrics.netProfitUsd.toStringAsFixed(2)}',
-              subtitle: 'Ventas menos Costos (COGS)',
-              badgeText: 'Margen ~${metrics.profitMarginPercent.toStringAsFixed(0)}%',
-              badgeColor: const Color(0xFF0EA5E9),
-              icon: Icons.savings_outlined,
-              iconColor: const Color(0xFF0EA5E9),
-            ),
-            _buildKpiCard(
-              title: 'Productos Vendidos',
-              value: '${metrics.totalUnitsSold.toInt()} Unidades',
-              subtitle: 'Despachadas en el turno',
-              badgeText: 'Alta rotación',
-              badgeColor: const Color(0xFF8B5CF6),
-              icon: Icons.shopping_bag_outlined,
-              iconColor: const Color(0xFF8B5CF6),
-            ),
-            _buildKpiCard(
-              title: 'Ticket Promedio',
-              value: '\$${metrics.averageTicketUsd.toStringAsFixed(2)}',
-              subtitle: 'Por transacción realizada',
-              badgeText: 'Óptimo',
-              badgeColor: AppColors.success,
-              icon: Icons.receipt_long_outlined,
-              iconColor: AppColors.success,
-            ),
-          ],
+          itemCount: 4,
+          itemBuilder: (context, index) {
+            switch (index) {
+              case 0:
+                return _buildKpiCard(
+                  title: 'Ingresos Totales',
+                  value: '\$${metrics.totalRevenueUsd.toStringAsFixed(2)}',
+                  subtitle: 'Bs. ${metrics.totalRevenueBs.toStringAsFixed(2)}',
+                  badgeText: '+24.8%',
+                  badgeColor: AppColors.success,
+                  icon: Icons.monetization_on_outlined,
+                  iconColor: primaryColor,
+                );
+              case 1:
+                return _buildKpiCard(
+                  title: 'Utilidad Neta Estimada',
+                  value: '\$${metrics.netProfitUsd.toStringAsFixed(2)}',
+                  subtitle: 'Ventas menos Costos (COGS)',
+                  badgeText: 'Margen ~${metrics.profitMarginPercent.toStringAsFixed(0)}%',
+                  badgeColor: const Color(0xFF0EA5E9),
+                  icon: Icons.savings_outlined,
+                  iconColor: const Color(0xFF0EA5E9),
+                );
+              case 2:
+                return _buildKpiCard(
+                  title: 'Productos Vendidos',
+                  value: '${metrics.totalUnitsSold.toInt()} Unidades',
+                  subtitle: 'Despachadas en el turno',
+                  badgeText: 'Alta rotación',
+                  badgeColor: const Color(0xFF8B5CF6),
+                  icon: Icons.shopping_bag_outlined,
+                  iconColor: const Color(0xFF8B5CF6),
+                );
+              case 3:
+              default:
+                return _buildKpiCard(
+                  title: 'Ticket Promedio',
+                  value: '\$${metrics.averageTicketUsd.toStringAsFixed(2)}',
+                  subtitle: 'Por transacción realizada',
+                  badgeText: 'Óptimo',
+                  badgeColor: AppColors.success,
+                  icon: Icons.receipt_long_outlined,
+                  iconColor: AppColors.success,
+                );
+            }
+          },
         );
       },
     );
@@ -245,6 +248,7 @@ class DashboardView extends ConsumerWidget {
   }) {
     return Container(
       padding: const EdgeInsets.all(18),
+      constraints: const BoxConstraints(minHeight: 120),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(20),
@@ -264,27 +268,48 @@ class DashboardView extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(title, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
-              Container(
+              Flexible(
+                child: AutoSizeText(
+                  title,
+                  maxLines: 1,
+                  minFontSize: 10,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                ),
+              ),
+              const SizedBox(width: 8),
+              CleanSoftPill(
+                text: badgeText,
+                backgroundColor: badgeColor.withOpacity(0.12),
+                textColor: badgeColor,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: badgeColor.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(9999),
-                ),
-                child: Text(
-                  badgeText,
-                  style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: badgeColor),
-                ),
               ),
             ],
           ),
-          Text(value, style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
+          const SizedBox(height: 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
+            ),
+          ),
+          const SizedBox(height: 6),
           Row(
             children: [
               Icon(icon, size: 14, color: iconColor),
               const SizedBox(width: 4),
               Expanded(
-                child: Text(subtitle, style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary), overflow: TextOverflow.ellipsis),
+                child: AutoSizeText(
+                  subtitle,
+                  maxLines: 1,
+                  minFontSize: 9,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary),
+                ),
               ),
             ],
           ),
@@ -294,7 +319,7 @@ class DashboardView extends ConsumerWidget {
   }
 
   // --------------------------------------------------------------------------
-  // 3. TOP SELLING PRODUCTS CON BARRAS TIPO PÍLDORA (Sweet Crumb Style)
+  // 3. TOP SELLING PRODUCTS CON BARRAS TIPO PÍLDORA (Sweet Crumb Style - Ley 2)
   // --------------------------------------------------------------------------
   Widget _buildTopSellingSection(DashboardMetricsState metrics) {
     return Container(
@@ -327,10 +352,13 @@ class DashboardView extends ConsumerWidget {
                   ),
                 ],
               ),
-              Container(
+              CleanSoftPill(
+                text: 'Sweet Crumb Style',
+                backgroundColor: const Color(0xFFF1F5F9),
+                textColor: AppColors.textSecondary,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(9999)),
-                child: Text('Sweet Crumb Style', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
               ),
             ],
           ),
@@ -343,99 +371,18 @@ class DashboardView extends ConsumerWidget {
 
           ...metrics.topSellingProducts.map((item) {
             final pillColor = Color(item.colorHex);
+            final qtyDisplay = item.quantitySold == item.quantitySold.toInt()
+                ? item.quantitySold.toInt().toString()
+                : item.quantitySold.toString();
 
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Encabezado del Producto
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '${item.rank}. ${item.productName}',
-                        style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.textPrimary),
-                      ),
-                      Text(
-                        '\$${item.revenueUsd.toStringAsFixed(2)}',
-                        style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 13, color: pillColor),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-
-                  // BARRA TIPO PÍLDORA REDONDEADA (Inspirada en Imagen 2 Sweet Crumb)
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final totalWidth = constraints.maxWidth;
-                      final pillWidth = (totalWidth * item.percentageShare).clamp(160.0, totalWidth);
-
-                      return Stack(
-                        children: [
-                          // Fondo gris suave de la barra completa
-                          Container(
-                            height: 38,
-                            width: totalWidth,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF1F5F9),
-                              borderRadius: BorderRadius.circular(9999),
-                            ),
-                          ),
-
-                          // Barra de progreso de color con la foto adentro
-                          Container(
-                            height: 38,
-                            width: pillWidth,
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            decoration: BoxDecoration(
-                              color: pillColor,
-                              borderRadius: BorderRadius.circular(9999),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: pillColor.withOpacity(0.25),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              children: [
-                                // Foto circular o avatar con iniciales dentro de la píldora
-                                CircleAvatar(
-                                  radius: 15,
-                                  backgroundColor: Colors.white,
-                                  child: Text(
-                                    item.initials,
-                                    style: GoogleFonts.inter(
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 11,
-                                      color: pillColor,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-
-                                // Etiqueta dentro de la píldora
-                                Expanded(
-                                  child: Text(
-                                    '\$${item.revenueUsd.toStringAsFixed(2)} • ${item.quantitySold == item.quantitySold.toInt() ? item.quantitySold.toInt() : item.quantitySold} ${item.unitLabel}',
-                                    style: GoogleFonts.inter(
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 11,
-                                      color: Colors.white,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ],
+            return SweetCrumbProgressPill(
+              title: '${item.rank}. ${item.productName}',
+              subtitle: '\$${item.revenueUsd.toStringAsFixed(2)} • $qtyDisplay ${item.unitLabel}',
+              percentage: item.percentageShare,
+              progressColor: pillColor,
+              avatar: Text(
+                item.initials,
+                style: GoogleFonts.inter(fontWeight: FontWeight.w900, fontSize: 13, color: pillColor),
               ),
             );
           }),
@@ -509,9 +456,13 @@ class DashboardView extends ConsumerWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text(
-                        '\$${entry.value.toStringAsFixed(2)}',
-                        style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 14, color: isZero ? AppColors.textSecondary : primaryColor),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          '\$${entry.value.toStringAsFixed(2)}',
+                          style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 14, color: isZero ? AppColors.textSecondary : primaryColor),
+                        ),
                       ),
                       if (entry.key.contains('VES') && entry.value > 0)
                         Text(

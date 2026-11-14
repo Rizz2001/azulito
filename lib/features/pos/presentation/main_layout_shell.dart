@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:auto_size_text/auto_size_text.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/clean_soft_pill.dart';
 import '../../../core/database/sync_service.dart';
 import '../domain/models/pos_models.dart';
 import 'controllers/pos_controller.dart';
@@ -19,6 +22,8 @@ import '../../dashboard/presentation/views/dashboard_view.dart';
 import '../../settings/presentation/views/settings_view.dart';
 import '../../auth/presentation/controllers/auth_controller.dart';
 import '../../auth/presentation/widgets/pin_auth_modal.dart';
+import '../../../../core/licensing/licensing_controller.dart';
+import '../../licensing/license_suspended_view.dart';
 import 'widgets/remote_scanner_modal.dart';
 import 'widgets/thermal_ticket_modal.dart';
 
@@ -70,6 +75,11 @@ class _MainLayoutShellState extends ConsumerState<MainLayoutShell> {
 
   @override
   Widget build(BuildContext context) {
+    final licensingState = ref.watch(licensingProvider);
+    if (licensingState.isSuspended) {
+      return const LicenseSuspendedView();
+    }
+
     final posState = ref.watch(posProvider);
     final primaryColor = ref.watch(primaryColorProvider);
     final isDesktop = MediaQuery.of(context).size.width >= 900;
@@ -101,6 +111,118 @@ class _MainLayoutShellState extends ConsumerState<MainLayoutShell> {
   Widget _buildGlobalHeader(BuildContext context, PosState posState, Color primaryColor) {
     final syncState = ref.watch(syncProvider);
     final authState = ref.watch(authProvider);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isCompact = screenWidth < 900;
+
+    if (isCompact) {
+      return Container(
+        height: 64,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
+        ),
+        child: Row(
+          children: [
+            // Logo Icono Compacto
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [primaryColor, AppColors.accent],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.point_of_sale, color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 8),
+
+            // Buscador Compacto
+            Expanded(
+              child: SizedBox(
+                height: 40,
+                child: TextField(
+                  controller: _searchCtrl,
+                  focusNode: _searchFocusNode,
+                  onChanged: (val) => ref.read(searchQueryProvider.notifier).state = val,
+                  onSubmitted: (val) => _handleBarcodeSubmit(val, posState),
+                  decoration: InputDecoration(
+                    hintText: 'Buscar (F2)...',
+                    hintStyle: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary),
+                    prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary, size: 18),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+
+            // Píldora Compacta Tasa
+            CleanSoftPill(
+              text: posState.exchangeRate.toStringAsFixed(1),
+              prefix: const Text('💵', style: TextStyle(fontSize: 13)),
+              textColor: primaryColor,
+              backgroundColor: const Color(0xFFEFF6FF),
+              borderColor: AppColors.accent.withOpacity(0.3),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              onTap: () => _showRateDialog(context, posState),
+            ),
+            const SizedBox(width: 6),
+
+            // Usuario Compacto
+            InkWell(
+              onTap: () => PinAuthModal.showUserSwitcher(context),
+              borderRadius: BorderRadius.circular(9999),
+              child: Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: authState.currentUser.isAdmin
+                      ? primaryColor.withOpacity(0.12)
+                      : AppColors.accent.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  authState.currentUser.isAdmin ? Icons.shield : Icons.person,
+                  size: 16,
+                  color: authState.currentUser.isAdmin ? primaryColor : AppColors.accent,
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+
+            // Sync Status Dot
+            InkWell(
+              onTap: () => ref.read(syncProvider.notifier).toggleOfflineSimulation(),
+              borderRadius: BorderRadius.circular(9999),
+              child: Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: syncState.isOnline ? const Color(0xFFECFDF5) : const Color(0xFFFFFBEB),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: syncState.isOnline ? AppColors.success : Colors.amber,
+                    width: 1.5,
+                  ),
+                ),
+                child: Center(
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: syncState.isOnline ? AppColors.success : Colors.amber.shade700,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Container(
       height: 72,
@@ -174,106 +296,71 @@ class _MainLayoutShellState extends ConsumerState<MainLayoutShell> {
           ),
           const SizedBox(width: 14),
 
-          // Píldora Interactiva de Tasa del Día
-          InkWell(
+          // Píldora Interactiva de Tasa del Día (Ley 1 Clean Soft UI)
+          CleanSoftPill(
+            text: 'Tasa: ${posState.exchangeRate.toStringAsFixed(2)} Bs/\$',
+            prefix: const Text('💵', style: TextStyle(fontSize: 14)),
+            suffix: const Icon(Icons.keyboard_arrow_down, size: 14, color: AppColors.accent),
+            backgroundColor: const Color(0xFFEFF6FF),
+            textColor: primaryColor,
+            borderColor: AppColors.accent.withOpacity(0.3),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
             onTap: () => _showRateDialog(context, posState),
-            borderRadius: BorderRadius.circular(9999),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEFF6FF),
-                borderRadius: BorderRadius.circular(9999),
-                border: Border.all(color: AppColors.accent.withOpacity(0.3)),
-              ),
-              child: Row(
-                children: [
-                  const Text('💵', style: TextStyle(fontSize: 15)),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Tasa: ${posState.exchangeRate.toStringAsFixed(2)} Bs/\$',
-                    style: GoogleFonts.inter(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                      color: primaryColor,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.keyboard_arrow_down, size: 16, color: AppColors.accent),
-                ],
-              ),
-            ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
 
           // Selector de Usuario Activo y Roles con PIN
-          InkWell(
-            onTap: () => PinAuthModal.showUserSwitcher(context),
-            borderRadius: BorderRadius.circular(9999),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: authState.currentUser.isAdmin
-                    ? primaryColor.withOpacity(0.10)
-                    : AppColors.accent.withOpacity(0.10),
-                borderRadius: BorderRadius.circular(9999),
-                border: Border.all(
-                  color: authState.currentUser.isAdmin
-                      ? primaryColor.withOpacity(0.5)
-                      : AppColors.accent.withOpacity(0.5),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    authState.currentUser.isAdmin ? Icons.shield : Icons.badge_outlined,
-                    size: 16,
-                    color: authState.currentUser.isAdmin ? primaryColor : AppColors.accent,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    authState.currentUser.fullName,
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: authState.currentUser.isAdmin ? primaryColor : AppColors.accent,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.arrow_drop_down, size: 16, color: AppColors.textSecondary),
-                ],
-              ),
+          CleanSoftPill(
+            text: authState.currentUser.isAdmin
+                ? '👑 Admin (${authState.currentUser.fullName.split(' ').first})'
+                : '🧑💼 Cajero (Turno Activo)',
+            prefix: Icon(
+              authState.currentUser.isAdmin ? Icons.shield : Icons.badge_outlined,
+              size: 15,
+              color: authState.currentUser.isAdmin ? primaryColor : AppColors.accent,
             ),
+            suffix: const Icon(Icons.arrow_drop_down, size: 15, color: AppColors.textSecondary),
+            backgroundColor: authState.currentUser.isAdmin
+                ? primaryColor.withOpacity(0.10)
+                : AppColors.accent.withOpacity(0.10),
+            textColor: authState.currentUser.isAdmin ? primaryColor : AppColors.accent,
+            borderColor: authState.currentUser.isAdmin
+                ? primaryColor.withOpacity(0.4)
+                : AppColors.accent.withOpacity(0.4),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            onTap: () => PinAuthModal.showUserSwitcher(context),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
 
           // Badge de Cuentas en Espera (si existen)
-          if (posState.heldBills.isNotEmpty)
-            InkWell(
+          if (posState.heldBills.isNotEmpty) ...[
+            CleanSoftPill(
+              text: '${posState.heldBills.length} Pausadas',
+              prefix: const Icon(Icons.pause_circle_filled, size: 16, color: Colors.amber),
+              backgroundColor: const Color(0xFFFFFBEB),
+              textColor: Colors.amber.shade900,
+              borderColor: Colors.amber.withOpacity(0.5),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
               onTap: () => HeldBillsModal.show(context),
-              borderRadius: BorderRadius.circular(9999),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFFBEB),
-                  borderRadius: BorderRadius.circular(9999),
-                  border: Border.all(color: Colors.amber),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.pause_circle_filled, size: 18, color: Colors.amber),
-                    const SizedBox(width: 6),
-                    Text(
-                      '${posState.heldBills.length} Pausadas',
-                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
-                    ),
-                  ],
-                ),
-              ),
             ),
-          const SizedBox(width: 10),
+            const SizedBox(width: 8),
+          ],
 
           // Badge de Estado Online / Offline Interactivo (Simulador de Apagón)
-          InkWell(
+          CleanSoftPill(
+            text: syncState.statusBadgeLabel,
+            prefix: Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: syncState.isOnline ? AppColors.success : Colors.amber.shade700,
+                shape: BoxShape.circle,
+              ),
+            ),
+            backgroundColor: syncState.isOnline ? const Color(0xFFECFDF5) : const Color(0xFFFFFBEB),
+            textColor: syncState.isOnline ? const Color(0xFF065F46) : Colors.amber.shade900,
+            borderColor: syncState.isOnline ? AppColors.success.withOpacity(0.3) : Colors.amber.withOpacity(0.5),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
             onTap: () {
               ref.read(syncProvider.notifier).toggleOfflineSimulation();
               final isOnlineNow = !syncState.isOfflineSimulated;
@@ -288,38 +375,6 @@ class _MainLayoutShellState extends ConsumerState<MainLayoutShell> {
                 ),
               );
             },
-            borderRadius: BorderRadius.circular(9999),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: syncState.isOnline ? const Color(0xFFECFDF5) : const Color(0xFFFFFBEB),
-                borderRadius: BorderRadius.circular(9999),
-                border: Border.all(
-                  color: syncState.isOnline ? AppColors.success.withOpacity(0.3) : Colors.amber.withOpacity(0.5),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: syncState.isOnline ? AppColors.success : Colors.amber.shade700,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    syncState.statusBadgeLabel,
-                    style: GoogleFonts.inter(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                      color: syncState.isOnline ? const Color(0xFF065F46) : Colors.amber.shade900,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ),
         ],
       ),
@@ -412,7 +467,7 @@ class _MainLayoutShellState extends ConsumerState<MainLayoutShell> {
             return Padding(
               padding: const EdgeInsets.only(bottom: 6),
               child: InkWell(
-                onTap: () => ref.read(selectedNavTabProvider.notifier).state = m['id'] as String,
+                onTap: () => _switchNavTab(m['id'] as String),
                 borderRadius: BorderRadius.circular(14),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
@@ -507,7 +562,7 @@ class _MainLayoutShellState extends ConsumerState<MainLayoutShell> {
   }
 
   // --------------------------------------------------------------------------
-  // COLUMNA 2: CUADRÍCULA DE PRODUCTOS
+  // COLUMNA 2: CUADRÍCULA DE PRODUCTOS (AlignedGridView - letsar/flutter_staggered_grid_view)
   // --------------------------------------------------------------------------
   Widget _buildProductGrid(BuildContext context, PosState posState, Color primaryColor) {
     final selectedCat = ref.watch(selectedCategoryProvider);
@@ -523,14 +578,11 @@ class _MainLayoutShellState extends ConsumerState<MainLayoutShell> {
 
     return Container(
       color: AppColors.background,
-      padding: const EdgeInsets.all(20),
-      child: GridView.builder(
-        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: 220,
-          mainAxisExtent: 245,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-        ),
+      padding: const EdgeInsets.all(16),
+      child: AlignedGridView.extent(
+        maxCrossAxisExtent: 220,
+        mainAxisSpacing: 14,
+        crossAxisSpacing: 14,
         itemCount: filtered.length,
         itemBuilder: (context, index) {
           final prod = filtered[index];
@@ -591,6 +643,7 @@ class _MainLayoutShellState extends ConsumerState<MainLayoutShell> {
       borderRadius: BorderRadius.circular(20),
       child: Container(
         padding: const EdgeInsets.all(14),
+        constraints: const BoxConstraints(minHeight: 220),
         decoration: BoxDecoration(
           color: isOutOfStock ? const Color(0xFFF8FAFC) : AppColors.surface,
           borderRadius: BorderRadius.circular(20),
@@ -602,67 +655,58 @@ class _MainLayoutShellState extends ConsumerState<MainLayoutShell> {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Badge Stock Disponible
+            // Badge Stock Disponible (Ley 1 CleanSoftPill)
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: isOutOfStock
-                        ? const Color(0xFFFEE2E2)
-                        : isLowStock
-                            ? const Color(0xFFFEF3C7)
-                            : const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(9999),
-                  ),
-                  child: Text(
-                    isOutOfStock
-                        ? 'Agotado'
-                        : isLowStock
-                            ? '¡Quedan ${availableStock.toInt()}!'
-                            : 'Disp: ${prod.isWeightFraction ? "${availableStock.toStringAsFixed(1)}kg" : availableStock.toInt()}',
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: isOutOfStock
-                          ? AppColors.danger
-                          : isLowStock
-                              ? const Color(0xFFB45309)
-                              : AppColors.textSecondary,
-                    ),
-                  ),
+                CleanSoftPill(
+                  text: isOutOfStock
+                      ? 'Agotado'
+                      : isLowStock
+                          ? '¡Quedan ${availableStock.toInt()}!'
+                          : 'Disp: ${prod.isWeightFraction ? "${availableStock.toStringAsFixed(1)}kg" : availableStock.toInt()}',
+                  backgroundColor: isOutOfStock
+                      ? const Color(0xFFFEE2E2)
+                      : isLowStock
+                          ? const Color(0xFFFEF3C7)
+                          : const Color(0xFFF1F5F9),
+                  textColor: isOutOfStock
+                      ? AppColors.danger
+                      : isLowStock
+                          ? const Color(0xFFB45309)
+                          : AppColors.textSecondary,
+                  fontSize: 11,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 ),
                 if (prod.hasPresentations)
-                  Container(
+                  CleanSoftPill(
+                    text: 'Cajas/Pack',
+                    backgroundColor: AppColors.accent.withOpacity(0.12),
+                    textColor: AppColors.accent,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.accent.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text('Cajas/Pack',
-                        style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.accent)),
                   )
                 else if (prod.isWeightFraction)
-                  Container(
+                  CleanSoftPill(
+                    text: 'Pesable',
+                    backgroundColor: Colors.purple.withOpacity(0.12),
+                    textColor: Colors.purple,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.purple.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text('Pesable',
-                        style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.purple)),
                   ),
               ],
             ),
-            const Spacer(),
+            const SizedBox(height: 12),
 
             // Avatar Central con Iniciales Limpias
             Center(
               child: Container(
-                width: 64,
-                height: 64,
+                width: 60,
+                height: 60,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
@@ -678,7 +722,7 @@ class _MainLayoutShellState extends ConsumerState<MainLayoutShell> {
                   child: Text(
                     prod.name.substring(0, 2).toUpperCase(),
                     style: GoogleFonts.inter(
-                      fontSize: 22,
+                      fontSize: 20,
                       fontWeight: FontWeight.w800,
                       color: isOutOfStock ? AppColors.textSecondary : primaryColor,
                     ),
@@ -686,12 +730,13 @@ class _MainLayoutShellState extends ConsumerState<MainLayoutShell> {
                 ),
               ),
             ),
-            const Spacer(),
+            const SizedBox(height: 12),
 
             // Nombre
-            Text(
+            AutoSizeText(
               prod.name,
               maxLines: 2,
+              minFontSize: 11,
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.inter(
                 fontWeight: FontWeight.w600,
@@ -702,29 +747,33 @@ class _MainLayoutShellState extends ConsumerState<MainLayoutShell> {
             ),
             const SizedBox(height: 8),
 
-            // Precios Duales (USD en grande, Bs suave)
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text(
-                  '\$${priceUsd.toStringAsFixed(2)}',
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
-                    color: isOutOfStock ? AppColors.textSecondary : primaryColor,
+            // Precios Duales (Ley 3: FittedBox para evitar text-clipping)
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(
+                    '\$${priceUsd.toStringAsFixed(2)}',
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                      color: isOutOfStock ? AppColors.textSecondary : primaryColor,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'Bs. ${priceBs.toStringAsFixed(2)}',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textSecondary,
+                  const SizedBox(width: 6),
+                  Text(
+                    'Bs. ${priceBs.toStringAsFixed(2)}',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
@@ -996,30 +1045,43 @@ class _MainLayoutShellState extends ConsumerState<MainLayoutShell> {
                 const Divider(height: 1, color: AppColors.border),
                 const SizedBox(height: 12),
 
-                // Totales
+                // Totales (Ley 3: FittedBox y AutoSizeText para cero text-clipping en montos bimoneda)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Total a Pagar', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
-                        Text(
-                          '\$${posState.totalWithEstimatedIgtfUsd.toStringAsFixed(2)}',
-                          style: GoogleFonts.inter(fontSize: 26, fontWeight: FontWeight.w900, color: primaryColor, letterSpacing: -0.5),
-                        ),
-                      ],
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Total a Pagar', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              '\$${posState.totalWithEstimatedIgtfUsd.toStringAsFixed(2)}',
+                              style: GoogleFonts.inter(fontSize: 26, fontWeight: FontWeight.w900, color: primaryColor, letterSpacing: -0.5),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text('En Bolívares (VES)', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
-                        Text(
-                          'Bs. ${posState.totalBs.toStringAsFixed(2)}',
-                          style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
-                        ),
-                      ],
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text('En Bolívares (VES)', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerRight,
+                            child: Text(
+                              'Bs. ${posState.totalBs.toStringAsFixed(2)}',
+                              style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -1044,9 +1106,14 @@ class _MainLayoutShellState extends ConsumerState<MainLayoutShell> {
                             children: [
                               const Icon(Icons.check_circle_outline, size: 20),
                               const SizedBox(width: 8),
-                              Text(
-                                'COBRAR  \$${posState.totalWithEstimatedIgtfUsd.toStringAsFixed(2)}',
-                                style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 15, letterSpacing: 0.5),
+                              Flexible(
+                                child: AutoSizeText(
+                                  'COBRAR  \$${posState.totalWithEstimatedIgtfUsd.toStringAsFixed(2)}',
+                                  maxLines: 1,
+                                  minFontSize: 11,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 15, letterSpacing: 0.5),
+                                ),
                               ),
                             ],
                           ),
@@ -1156,37 +1223,37 @@ class _MainLayoutShellState extends ConsumerState<MainLayoutShell> {
             IconButton(
               icon: Icon(Icons.point_of_sale, color: navTab == 'pos' ? primaryColor : AppColors.textSecondary),
               tooltip: 'POS / Ventas',
-              onPressed: () => ref.read(selectedNavTabProvider.notifier).state = 'pos',
+              onPressed: () => _switchNavTab('pos'),
             ),
             IconButton(
               icon: Icon(Icons.account_balance_wallet, color: navTab == 'cash' ? primaryColor : AppColors.textSecondary),
               tooltip: 'Caja y Turnos',
-              onPressed: () => ref.read(selectedNavTabProvider.notifier).state = 'cash',
+              onPressed: () => _switchNavTab('cash'),
             ),
             IconButton(
               icon: Icon(Icons.receipt_long, color: navTab == 'sales' ? primaryColor : AppColors.textSecondary),
               tooltip: 'Historial',
-              onPressed: () => ref.read(selectedNavTabProvider.notifier).state = 'sales',
+              onPressed: () => _switchNavTab('sales'),
             ),
             IconButton(
               icon: Icon(Icons.people, color: navTab == 'customers' ? primaryColor : AppColors.textSecondary),
               tooltip: 'Clientes y CxC',
-              onPressed: () => ref.read(selectedNavTabProvider.notifier).state = 'customers',
+              onPressed: () => _switchNavTab('customers'),
             ),
             IconButton(
               icon: Icon(Icons.inventory_2_outlined, color: navTab == 'inventory' ? primaryColor : AppColors.textSecondary),
               tooltip: 'Inventario',
-              onPressed: () => ref.read(selectedNavTabProvider.notifier).state = 'inventory',
+              onPressed: () => _switchNavTab('inventory'),
             ),
             IconButton(
               icon: Icon(Icons.insights, color: navTab == 'dashboard' ? primaryColor : AppColors.textSecondary),
               tooltip: 'Dashboard',
-              onPressed: () => ref.read(selectedNavTabProvider.notifier).state = 'dashboard',
+              onPressed: () => _switchNavTab('dashboard'),
             ),
             IconButton(
               icon: Icon(Icons.settings_outlined, color: navTab == 'settings' ? primaryColor : AppColors.textSecondary),
               tooltip: 'Ajustes',
-              onPressed: () => ref.read(selectedNavTabProvider.notifier).state = 'settings',
+              onPressed: () => _switchNavTab('settings'),
             ),
             // Carrito Flotante con Badge y apertura de Checkout
             Stack(
@@ -1231,25 +1298,28 @@ class _MainLayoutShellState extends ConsumerState<MainLayoutShell> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
         decoration: BoxDecoration(
           color: isSelected ? primaryColor.withOpacity(0.12) : AppColors.background,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: isSelected ? primaryColor : AppColors.border),
         ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 18, color: isSelected ? primaryColor : AppColors.textPrimary),
             const SizedBox(height: 2),
-            Text(
+            AutoSizeText(
               label,
+              maxLines: 1,
+              minFontSize: 8,
+              stepGranularity: 0.5,
+              overflow: TextOverflow.ellipsis,
               style: GoogleFonts.inter(
                 fontSize: 11,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
                 color: isSelected ? primaryColor : AppColors.textPrimary,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -1305,6 +1375,19 @@ class _MainLayoutShellState extends ConsumerState<MainLayoutShell> {
         duration: const Duration(seconds: 2),
       ),
     );
+  }
+
+  void _switchNavTab(String targetTab) async {
+    final authState = ref.read(authProvider);
+    if (targetTab == 'settings' && authState.currentUser.isCashier) {
+      final authorized = await PinAuthModal.requestSupervisorAuth(
+        context,
+        actionName: 'Acceder al Módulo de Ajustes y Tienda',
+      );
+      if (!authorized) return;
+    }
+    if (!mounted) return;
+    ref.read(selectedNavTabProvider.notifier).state = targetTab;
   }
 
   void _showRateDialog(BuildContext context, PosState posState) async {

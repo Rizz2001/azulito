@@ -6,6 +6,8 @@ import '../../../../core/theme/app_theme.dart';
 import '../../domain/models/sale_history_models.dart';
 import '../controllers/sales_history_controller.dart';
 import '../../../pos/presentation/controllers/pos_controller.dart';
+import '../../../auth/presentation/controllers/auth_controller.dart';
+import '../../../auth/presentation/widgets/pin_auth_modal.dart';
 
 class SalesHistoryView extends ConsumerStatefulWidget {
   const SalesHistoryView({super.key});
@@ -280,7 +282,17 @@ class _SalesHistoryViewState extends ConsumerState<SalesHistoryView> {
   // --------------------------------------------------------------------------
   // MODAL DE DEVOLUCIÓN PARCIAL / TOTAL POR ÍTEM
   // --------------------------------------------------------------------------
-  void _showPartialReturnModal(BuildContext context, SaleHistoryRecordModel sale) {
+  void _showPartialReturnModal(BuildContext context, SaleHistoryRecordModel sale) async {
+    final authState = ref.read(authProvider);
+    if (authState.currentUser.isCashier) {
+      final authorized = await PinAuthModal.requestSupervisorAuth(
+        context,
+        actionName: 'Procesar Devolución de Factura ${sale.invoiceNumber}',
+      );
+      if (!authorized) return;
+    }
+    if (!context.mounted) return;
+
     final Map<String, double> returnQuantities = {};
     for (final i in sale.items) {
       returnQuantities[i.id] = 0.0;

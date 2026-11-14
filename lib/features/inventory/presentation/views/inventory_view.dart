@@ -3,9 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:auto_size_text/auto_size_text.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/clean_soft_pill.dart';
 import '../../../pos/domain/models/pos_models.dart';
 import '../../../pos/presentation/controllers/pos_controller.dart';
+import '../../../auth/presentation/controllers/auth_controller.dart';
+import '../../../auth/presentation/widgets/pin_auth_modal.dart';
 import '../controllers/inventory_controller.dart';
 import '../../domain/models/inventory_models.dart';
 
@@ -42,9 +47,12 @@ class _InventoryViewState extends ConsumerState<InventoryView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. CABECERA: ACCIONES PRINCIPALES Y TÍTULO
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // 1. CABECERA: ACCIONES PRINCIPALES Y TÍTULO (Layout Responsivo)
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -60,7 +68,9 @@ class _InventoryViewState extends ConsumerState<InventoryView> {
                     ),
                   ],
                 ),
-                Row(
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 8,
                   children: [
                     OutlinedButton.icon(
                       icon: const Icon(Icons.list_alt, size: 18),
@@ -72,7 +82,6 @@ class _InventoryViewState extends ConsumerState<InventoryView> {
                       ),
                       onPressed: () => _showKardexModal(context),
                     ),
-                    const SizedBox(width: 10),
                     OutlinedButton.icon(
                       icon: const Icon(Icons.add_shopping_cart, size: 18),
                       label: const Text('📦 Cargar Compra'),
@@ -84,7 +93,6 @@ class _InventoryViewState extends ConsumerState<InventoryView> {
                       ),
                       onPressed: () => _showPurchaseModal(context, posState.catalog),
                     ),
-                    const SizedBox(width: 10),
                     ElevatedButton.icon(
                       icon: const Icon(Icons.add, size: 18),
                       label: const Text('+ Nuevo Producto'),
@@ -119,58 +127,68 @@ class _InventoryViewState extends ConsumerState<InventoryView> {
   }
 
   // --------------------------------------------------------------------------
-  // 1. TARJETAS DE MÉTRICAS SUPERIORES
+  // 1. TARJETAS DE MÉTRICAS SUPERIORES (AlignedGridView - letsar/flutter_staggered_grid_view)
   // --------------------------------------------------------------------------
   Widget _buildMetricsCards(InventoryMetricsModel metrics, InventoryState invState, Color primaryColor) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isNarrow = constraints.maxWidth < 900;
-        return GridView.count(
-          crossAxisCount: isNarrow ? 2 : 4,
+        final isUltraNarrow = constraints.maxWidth < 500;
+        final crossCount = isUltraNarrow ? 1 : (isNarrow ? 2 : 4);
+
+        return AlignedGridView.count(
+          crossAxisCount: crossCount,
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          childAspectRatio: isNarrow ? 1.8 : 1.9,
-          children: [
-            _buildStatCard(
-              title: 'Total SKUs Activos',
-              mainValue: '${metrics.totalSkus} Productos',
-              subtitle: 'Catálogo disponible en tienda',
-              icon: Icons.inventory_2,
-              iconColor: primaryColor,
-              bgColor: const Color(0xFFEFF6FF),
-            ),
-            _buildStatCard(
-              title: 'Valor Inventario (Costo)',
-              mainValue: '\$${metrics.totalCostUsd.toStringAsFixed(2)}',
-              subtitle: 'Costo total de adquisición USD',
-              icon: Icons.monetization_on,
-              iconColor: const Color(0xFF0EA5E9),
-              bgColor: const Color(0xFFF0F9FF),
-            ),
-            _buildStatCard(
-              title: 'Valor Inventario (Venta)',
-              mainValue: '\$${metrics.totalRetailUsd.toStringAsFixed(2)}',
-              subtitle: 'Bs. ${metrics.totalRetailBs.toStringAsFixed(2)}',
-              icon: Icons.point_of_sale,
-              iconColor: AppColors.success,
-              bgColor: const Color(0xFFECFDF5),
-            ),
-            InkWell(
-              onTap: () => ref.read(inventoryProvider.notifier).toggleLowStockFilter(),
-              borderRadius: BorderRadius.circular(20),
-              child: _buildStatCard(
-                title: 'Alertas Stock Bajo',
-                mainValue: '${metrics.lowStockCount} Críticos',
-                subtitle: invState.showOnlyLowStock ? 'Filtrando solo críticos (Toca p/ ver todos)' : '≤ Stock Mínimo (Toca p/ filtrar)',
-                icon: Icons.warning_amber_rounded,
-                iconColor: metrics.lowStockCount > 0 ? AppColors.danger : AppColors.success,
-                bgColor: metrics.lowStockCount > 0 ? const Color(0xFFFEF2F2) : const Color(0xFFECFDF5),
-                isHighlighted: invState.showOnlyLowStock,
-              ),
-            ),
-          ],
+          itemCount: 4,
+          itemBuilder: (context, index) {
+            switch (index) {
+              case 0:
+                return _buildStatCard(
+                  title: 'Total SKUs Activos',
+                  mainValue: '${metrics.totalSkus} Productos',
+                  subtitle: 'Catálogo disponible en tienda',
+                  icon: Icons.inventory_2,
+                  iconColor: primaryColor,
+                  bgColor: const Color(0xFFEFF6FF),
+                );
+              case 1:
+                return _buildStatCard(
+                  title: 'Valor Inventario (Costo)',
+                  mainValue: '\$${metrics.totalCostUsd.toStringAsFixed(2)}',
+                  subtitle: 'Costo total de adquisición USD',
+                  icon: Icons.monetization_on,
+                  iconColor: const Color(0xFF0EA5E9),
+                  bgColor: const Color(0xFFF0F9FF),
+                );
+              case 2:
+                return _buildStatCard(
+                  title: 'Valor Inventario (Venta)',
+                  mainValue: '\$${metrics.totalRetailUsd.toStringAsFixed(2)}',
+                  subtitle: 'Bs. ${metrics.totalRetailBs.toStringAsFixed(2)}',
+                  icon: Icons.point_of_sale,
+                  iconColor: AppColors.success,
+                  bgColor: const Color(0xFFECFDF5),
+                );
+              case 3:
+              default:
+                return InkWell(
+                  onTap: () => ref.read(inventoryProvider.notifier).toggleLowStockFilter(),
+                  borderRadius: BorderRadius.circular(20),
+                  child: _buildStatCard(
+                    title: 'Alertas Stock Bajo',
+                    mainValue: '${metrics.lowStockCount} Críticos',
+                    subtitle: invState.showOnlyLowStock ? 'Filtrando solo críticos (Toca p/ ver todos)' : '≤ Stock Mínimo (Toca p/ filtrar)',
+                    icon: Icons.warning_amber_rounded,
+                    iconColor: metrics.lowStockCount > 0 ? AppColors.danger : AppColors.success,
+                    bgColor: metrics.lowStockCount > 0 ? const Color(0xFFFEF2F2) : const Color(0xFFECFDF5),
+                    isHighlighted: invState.showOnlyLowStock,
+                  ),
+                );
+            }
+          },
         );
       },
     );
@@ -187,6 +205,7 @@ class _InventoryViewState extends ConsumerState<InventoryView> {
   }) {
     return Container(
       padding: const EdgeInsets.all(18),
+      constraints: const BoxConstraints(minHeight: 110),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(20),
@@ -204,12 +223,21 @@ class _InventoryViewState extends ConsumerState<InventoryView> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(title, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+              Flexible(
+                child: AutoSizeText(
+                  title,
+                  maxLines: 1,
+                  minFontSize: 10,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                ),
+              ),
+              const SizedBox(width: 6),
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(10)),
@@ -217,8 +245,23 @@ class _InventoryViewState extends ConsumerState<InventoryView> {
               ),
             ],
           ),
-          Text(mainValue, style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
-          Text(subtitle, style: GoogleFonts.inter(fontSize: 11, color: isHighlighted ? AppColors.danger : AppColors.textSecondary), overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              mainValue,
+              style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
+            ),
+          ),
+          const SizedBox(height: 4),
+          AutoSizeText(
+            subtitle,
+            maxLines: 1,
+            minFontSize: 9,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.inter(fontSize: 11, color: isHighlighted ? AppColors.danger : AppColors.textSecondary),
+          ),
         ],
       ),
     );
@@ -442,34 +485,25 @@ class _InventoryViewState extends ConsumerState<InventoryView> {
 
                 const SizedBox(width: 20),
 
-                // Stock Actual con Badge de Alerta
-                Container(
-                  width: 110,
-                  alignment: Alignment.center,
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: isOutOfStock
-                        ? const Color(0xFFFEF2F2)
-                        : (isLowStock ? const Color(0xFFFFFBEB) : const Color(0xFFECFDF5)),
-                    borderRadius: BorderRadius.circular(9999),
-                    border: Border.all(
-                      color: isOutOfStock
-                          ? AppColors.danger
-                          : (isLowStock ? AppColors.warning : AppColors.success),
-                    ),
-                  ),
-                  child: Text(
-                    p.isWeightFraction
-                        ? '${currentStock.toStringAsFixed(2)} Kg'
-                        : '${currentStock.toInt()} Unid.',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 12,
-                      color: isOutOfStock
-                          ? AppColors.danger
-                          : (isLowStock ? Colors.amber.shade900 : AppColors.success),
-                    ),
-                  ),
+                // Stock Actual con Badge de Alerta (Ley 1 CleanSoftPill)
+                CleanSoftPill(
+                  text: isOutOfStock
+                      ? 'Agotado (0)'
+                      : (isLowStock
+                          ? 'Crítico (${p.isWeightFraction ? currentStock.toStringAsFixed(1) : currentStock.toInt()})'
+                          : (p.isWeightFraction ? '${currentStock.toStringAsFixed(2)} Kg' : '${currentStock.toInt()} Unid.')),
+                  backgroundColor: isOutOfStock
+                      ? const Color(0xFFFEF2F2)
+                      : (isLowStock ? const Color(0xFFFFFBEB) : const Color(0xFFECFDF5)),
+                  textColor: isOutOfStock
+                      ? AppColors.danger
+                      : (isLowStock ? Colors.amber.shade900 : AppColors.success),
+                  borderColor: isOutOfStock
+                      ? AppColors.danger
+                      : (isLowStock ? AppColors.warning : AppColors.success),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 ),
 
                 const SizedBox(width: 14),
@@ -522,7 +556,17 @@ class _InventoryViewState extends ConsumerState<InventoryView> {
   // --------------------------------------------------------------------------
   // 4. MODAL CREACIÓN / EDICIÓN DE PRODUCTO CON CALCULADORA DE RENTABILIDAD
   // --------------------------------------------------------------------------
-  void _showProductFormModal(BuildContext context, {ProductModel? productToEdit}) {
+  void _showProductFormModal(BuildContext context, {ProductModel? productToEdit}) async {
+    final authState = ref.read(authProvider);
+    if (authState.currentUser.isCashier) {
+      final authorized = await PinAuthModal.requestSupervisorAuth(
+        context,
+        actionName: productToEdit != null ? 'Modificar Producto / Costos' : 'Crear Nuevo Producto en Inventario',
+      );
+      if (!authorized) return;
+    }
+    if (!context.mounted) return;
+
     final posState = ref.read(posProvider);
     final rate = posState.exchangeRate;
     final primaryColor = ref.read(primaryColorProvider);
@@ -904,7 +948,17 @@ class _InventoryViewState extends ConsumerState<InventoryView> {
   // --------------------------------------------------------------------------
   // 5. MODAL CARGAR COMPRA / ENTRADA DE MERCANCÍA
   // --------------------------------------------------------------------------
-  void _showPurchaseModal(BuildContext context, List<ProductModel> catalog) {
+  void _showPurchaseModal(BuildContext context, List<ProductModel> catalog) async {
+    final authState = ref.read(authProvider);
+    if (authState.currentUser.isCashier) {
+      final authorized = await PinAuthModal.requestSupervisorAuth(
+        context,
+        actionName: 'Recepción de Mercancía / Entrada a Stock',
+      );
+      if (!authorized) return;
+    }
+    if (!context.mounted) return;
+
     ProductModel selectedProduct = catalog.first;
     ProductPresentationModel? selectedPresentation;
     final qtyCtrl = TextEditingController(text: '10');
@@ -1040,7 +1094,17 @@ class _InventoryViewState extends ConsumerState<InventoryView> {
   // --------------------------------------------------------------------------
   // 6. MODAL AJUSTE DE STOCK (Merma / Conteo / Pérdida)
   // --------------------------------------------------------------------------
-  void _showAdjustmentModal(BuildContext context, ProductModel product) {
+  void _showAdjustmentModal(BuildContext context, ProductModel product) async {
+    final authState = ref.read(authProvider);
+    if (authState.currentUser.isCashier) {
+      final authorized = await PinAuthModal.requestSupervisorAuth(
+        context,
+        actionName: 'Ajuste Manual de Inventario / Merma',
+      );
+      if (!authorized) return;
+    }
+    if (!context.mounted) return;
+
     String type = 'waste'; // 'waste' = merma/pérdida, 'adjustment' = ajuste conteo
     double delta = -1.0;
     final qtyCtrl = TextEditingController(text: '1.0');

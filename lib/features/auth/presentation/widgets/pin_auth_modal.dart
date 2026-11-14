@@ -391,3 +391,4 @@ class _PinAuthModalState extends ConsumerState<PinAuthModal> {
     );
   }
 }
+

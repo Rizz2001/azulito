@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:auto_size_text/auto_size_text.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/clean_soft_pill.dart';
 import '../../domain/models/customer_models.dart';
 import '../controllers/customers_controller.dart';
 import '../../../pos/presentation/controllers/pos_controller.dart';
@@ -50,7 +53,7 @@ class _CustomersViewState extends ConsumerState<CustomersView> {
   }
 
   // --------------------------------------------------------------------------
-  // 1. TARJETAS DE RESUMEN SUPERIORES
+  // 1. TARJETAS DE RESUMEN SUPERIORES (AlignedGridView)
   // --------------------------------------------------------------------------
   Widget _buildStatCardsRow(
     BuildContext context,
@@ -64,39 +67,45 @@ class _CustomersViewState extends ConsumerState<CustomersView> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isNarrow = constraints.maxWidth < 800;
-        return GridView.count(
+        return AlignedGridView.count(
           crossAxisCount: isNarrow ? 1 : 3,
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          childAspectRatio: isNarrow ? 2.8 : 2.2,
-          children: [
-            _buildStatCard(
-              title: 'Total Cuentas por Cobrar (CxC)',
-              mainValue: '\$${totalUsd.toStringAsFixed(2)}',
-              subtitle: 'Equivalente: Bs. ${totalBs.toStringAsFixed(2)} (Tasa $rate)',
-              icon: Icons.account_balance_wallet,
-              iconColor: primaryColor,
-              bgColor: const Color(0xFFEFF6FF),
-            ),
-            _buildStatCard(
-              title: 'Clientes con Saldo Pendiente',
-              mainValue: '${customersState.customersWithDebtCount} Clientes',
-              subtitle: 'De un total de ${customersState.customers.length} registrados',
-              icon: Icons.people,
-              iconColor: const Color(0xFFF59E0B),
-              bgColor: const Color(0xFFFFFBEB),
-            ),
-            _buildStatCard(
-              title: 'Saldo Financiado por Cashea',
-              mainValue: '\$${customersState.casheaPendingDebtUsd.toStringAsFixed(2)}',
-              subtitle: 'Equivalente: Bs. ${(customersState.casheaPendingDebtUsd * rate).toStringAsFixed(2)}',
-              icon: Icons.credit_score,
-              iconColor: const Color(0xFF10B981),
-              bgColor: const Color(0xFFECFDF5),
-            ),
-          ],
+          itemCount: 3,
+          itemBuilder: (context, index) {
+            switch (index) {
+              case 0:
+                return _buildStatCard(
+                  title: 'Total Cuentas por Cobrar (CxC)',
+                  mainValue: '\$${totalUsd.toStringAsFixed(2)}',
+                  subtitle: 'Equivalente: Bs. ${totalBs.toStringAsFixed(2)} (Tasa $rate)',
+                  icon: Icons.account_balance_wallet,
+                  iconColor: primaryColor,
+                  bgColor: const Color(0xFFEFF6FF),
+                );
+              case 1:
+                return _buildStatCard(
+                  title: 'Clientes con Saldo Pendiente',
+                  mainValue: '${customersState.customersWithDebtCount} Clientes',
+                  subtitle: 'De un total de ${customersState.customers.length} registrados',
+                  icon: Icons.people,
+                  iconColor: const Color(0xFFF59E0B),
+                  bgColor: const Color(0xFFFFFBEB),
+                );
+              case 2:
+              default:
+                return _buildStatCard(
+                  title: 'Saldo Financiado por Cashea',
+                  mainValue: '\$${customersState.casheaPendingDebtUsd.toStringAsFixed(2)}',
+                  subtitle: 'Equivalente: Bs. ${(customersState.casheaPendingDebtUsd * rate).toStringAsFixed(2)}',
+                  icon: Icons.credit_score,
+                  iconColor: const Color(0xFF10B981),
+                  bgColor: const Color(0xFFECFDF5),
+                );
+            }
+          },
         );
       },
     );
@@ -112,6 +121,7 @@ class _CustomersViewState extends ConsumerState<CustomersView> {
   }) {
     return Container(
       padding: const EdgeInsets.all(20),
+      constraints: const BoxConstraints(minHeight: 110),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(20),
@@ -119,12 +129,21 @@ class _CustomersViewState extends ConsumerState<CustomersView> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(title, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+              Flexible(
+                child: AutoSizeText(
+                  title,
+                  maxLines: 1,
+                  minFontSize: 11,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                ),
+              ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(10)),
@@ -132,12 +151,21 @@ class _CustomersViewState extends ConsumerState<CustomersView> {
               ),
             ],
           ),
-          Text(
-            mainValue,
-            style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
+          const SizedBox(height: 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              mainValue,
+              style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
+            ),
           ),
-          Text(
+          const SizedBox(height: 4),
+          AutoSizeText(
             subtitle,
+            maxLines: 1,
+            minFontSize: 10,
+            overflow: TextOverflow.ellipsis,
             style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary),
           ),
         ],
@@ -217,132 +245,178 @@ class _CustomersViewState extends ConsumerState<CustomersView> {
     final debtBs = customer.currentDebtUsd * rate;
     final hasDebt = customer.hasDebt;
 
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: hasDebt ? AppColors.warning.withOpacity(0.5) : AppColors.border,
-          width: hasDebt ? 1.5 : 1,
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Avatar
-          CircleAvatar(
-            radius: 26,
-            backgroundColor: primaryColor.withOpacity(0.12),
-            child: Text(
-              customer.fullName.substring(0, 2).toUpperCase(),
-              style: GoogleFonts.inter(fontWeight: FontWeight.w800, color: primaryColor, fontSize: 16),
-            ),
-          ),
-          const SizedBox(width: 16),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < 720;
 
-          // Datos del Cliente
-          Expanded(
-            flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        final avatarWidget = CircleAvatar(
+          radius: 24,
+          backgroundColor: primaryColor.withOpacity(0.12),
+          child: Text(
+            customer.fullName.substring(0, 2).toUpperCase(),
+            style: GoogleFonts.inter(fontWeight: FontWeight.w800, color: primaryColor, fontSize: 15),
+          ),
+        );
+
+        final infoWidget = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Row(
-                  children: [
-                    Text(
-                      customer.fullName,
-                      style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-                    ),
-                    const SizedBox(width: 8),
-                    if (customer.isCasheaUser)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFEF3C7),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          'Cashea',
-                          style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
-                        ),
-                      ),
-                  ],
+                Flexible(
+                  child: AutoSizeText(
+                    customer.fullName,
+                    maxLines: 1,
+                    minFontSize: 13,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                  ),
                 ),
-                const SizedBox(height: 4),
+                if (customer.isCasheaUser) ...[
+                  const SizedBox(width: 8),
+                  CleanSoftPill(
+                    text: 'Cashea',
+                    backgroundColor: const Color(0xFFFEF3C7),
+                    textColor: Colors.amber.shade900,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Cédula/RIF: ${customer.idDocument} • WhatsApp: ${customer.phone ?? "N/A"}',
+              style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary),
+            ),
+          ],
+        );
+
+        final creditBarWidget = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Límite: \$${customer.creditLimitUsd.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
                 Text(
-                  'Cédula/RIF: ${customer.idDocument} • WhatsApp: ${customer.phone ?? "N/A"}',
-                  style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary),
+                  'Disp: \$${customer.availableCreditUsd.toStringAsFixed(2)}',
+                  style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.success),
                 ),
               ],
             ),
-          ),
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(9999),
+              child: LinearProgressIndicator(
+                value: customer.creditUsedPercentage,
+                minHeight: 8,
+                backgroundColor: const Color(0xFFE2E8F0),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  customer.creditUsedPercentage > 0.8 ? AppColors.danger : primaryColor,
+                ),
+              ),
+            ),
+          ],
+        );
 
-          // Barra de Crédito
-          Expanded(
-            flex: 3,
+        final debtWidget = Row(
+          mainAxisAlignment: isCompact ? MainAxisAlignment.spaceBetween : MainAxisAlignment.end,
+          children: [
+            Column(
+              crossAxisAlignment: isCompact ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+              children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    '\$${customer.currentDebtUsd.toStringAsFixed(2)}',
+                    style: GoogleFonts.inter(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: hasDebt ? AppColors.danger : AppColors.success,
+                    ),
+                  ),
+                ),
+                Text(
+                  hasDebt ? 'Bs. ${debtBs.toStringAsFixed(2)}' : 'Al día',
+                  style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+            if (hasDebt) ...[
+              const SizedBox(width: 12),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.payment, size: 16),
+                label: const Text('Abonar'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.success,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                onPressed: () => _showPaymentModal(context, customer, rate),
+              ),
+            ],
+          ],
+        );
+
+        if (isCompact) {
+          return Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: hasDebt ? AppColors.warning.withOpacity(0.5) : AppColors.border,
+                width: hasDebt ? 1.5 : 1,
+              ),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Límite: \$${customer.creditLimitUsd.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
-                    Text(
-                      'Disponible: \$${customer.availableCreditUsd.toStringAsFixed(2)}',
-                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.success),
-                    ),
+                    avatarWidget,
+                    const SizedBox(width: 12),
+                    Expanded(child: infoWidget),
                   ],
                 ),
-                const SizedBox(height: 6),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(9999),
-                  child: LinearProgressIndicator(
-                    value: customer.creditUsedPercentage,
-                    minHeight: 8,
-                    backgroundColor: const Color(0xFFE2E8F0),
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      customer.creditUsedPercentage > 0.8 ? AppColors.danger : primaryColor,
-                    ),
-                  ),
-                ),
+                const SizedBox(height: 12),
+                creditBarWidget,
+                const SizedBox(height: 12),
+                const Divider(height: 1, color: AppColors.border),
+                const SizedBox(height: 10),
+                debtWidget,
               ],
             ),
-          ),
-          const SizedBox(width: 24),
+          );
+        }
 
-          // Deuda Actual y Botón de Abono
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+        return Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: hasDebt ? AppColors.warning.withOpacity(0.5) : AppColors.border,
+              width: hasDebt ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(
-                '\$${customer.currentDebtUsd.toStringAsFixed(2)}',
-                style: GoogleFonts.inter(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                  color: hasDebt ? AppColors.danger : AppColors.success,
-                ),
-              ),
-              Text(
-                hasDebt ? 'Bs. ${debtBs.toStringAsFixed(2)}' : 'Al día',
-                style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: 8),
-              if (hasDebt)
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.payment, size: 16),
-                  label: const Text('Registrar Abono'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.success,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  onPressed: () => _showPaymentModal(context, customer, rate),
-                ),
+              avatarWidget,
+              const SizedBox(width: 16),
+              Expanded(flex: 3, child: infoWidget),
+              const SizedBox(width: 16),
+              Expanded(flex: 3, child: creditBarWidget),
+              const SizedBox(width: 20),
+              debtWidget,
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 

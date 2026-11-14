@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
+import 'core/widgets/responsive_breakpoints_wrapper.dart';
 import 'features/pos/presentation/main_layout_shell.dart';
 
 void main() async {
@@ -23,8 +24,10 @@ class AzulitoApp extends ConsumerWidget {
       title: 'Azulito POS - Sistema de Punto de Venta',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.getTheme(primaryColor),
+      builder: (context, child) => responsiveBreakpointsWrapper(context, child),
       home: const MainLayoutShell(),
     );
   }
 }
+
 

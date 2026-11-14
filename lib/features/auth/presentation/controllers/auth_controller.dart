@@ -99,3 +99,4 @@ class AuthNotifier extends StateNotifier<AuthState> {
     );
   }
 }
+

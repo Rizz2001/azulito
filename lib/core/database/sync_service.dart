@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../licensing/master_supabase_client.dart';
+import 'tenant_supabase_client.dart';
 
 // Estado del Motor de Sincronización y Simulador Anti-Apagones
 class SyncState {
@@ -41,8 +43,9 @@ class SyncState {
 
 class SyncNotifier extends StateNotifier<SyncState> {
   static const _uuid = Uuid();
+  final Ref? _ref;
 
-  SyncNotifier() : super(const SyncState());
+  SyncNotifier([this._ref]) : super(const SyncState());
 
   /// Alterna el simulador de apagón / corte de internet
   void toggleOfflineSimulation() {
@@ -98,20 +101,20 @@ class SyncNotifier extends StateNotifier<SyncState> {
 
   Future<void> _syncItemToSupabase(Map<String, dynamic> item) async {
     try {
-      // Supabase sync si el cliente está inicializado
-      if (Supabase.instance.isInitialized) {
-        final client = Supabase.instance.client;
-        final table = item['targetTable'] as String;
-        final op = item['operation'] as String;
-        final payload = item['payload'] as Map<String, dynamic>;
+      final client = _ref != null 
+          ? _ref.read(tenantSupabaseClientProvider)
+          : (Supabase.instance.isInitialized ? Supabase.instance.client : masterSupabaseClient);
 
-        if (op == 'INSERT') {
-          await client.from(table).insert(payload);
-        } else if (op == 'UPDATE') {
-          await client.from(table).update(payload).eq('id', item['entityId']);
-        } else if (op == 'DELETE') {
-          await client.from(table).delete().eq('id', item['entityId']);
-        }
+      final table = item['targetTable'] as String;
+      final op = item['operation'] as String;
+      final payload = item['payload'] as Map<String, dynamic>;
+
+      if (op == 'INSERT') {
+        await client.from(table).insert(payload);
+      } else if (op == 'UPDATE') {
+        await client.from(table).update(payload).eq('id', item['entityId']);
+      } else if (op == 'DELETE') {
+        await client.from(table).delete().eq('id', item['entityId']);
       }
     } catch (e) {
       debugPrint('[SyncService] Fallback offline: $e');
@@ -120,5 +123,5 @@ class SyncNotifier extends StateNotifier<SyncState> {
 }
 
 final syncProvider = StateNotifierProvider<SyncNotifier, SyncState>((ref) {
-  return SyncNotifier();
+  return SyncNotifier(ref);
 });

@@ -145,30 +145,34 @@ class _PresentationWeightModalState extends ConsumerState<PresentationWeightModa
         ),
         const SizedBox(height: 16),
 
-        // Chips Rápidos de Peso (0.250kg, 0.500kg, 1.000kg, 2.000kg)
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [0.250, 0.500, 1.000, 1.500, 2.000].map((kg) {
-            final isSelected = (_weightKg - kg).abs() < 0.001 && !_isManualMoneyMode;
-            return ChoiceChip(
-              label: Text('${kg >= 1 ? kg.toStringAsFixed(0) : (kg * 1000).toInt()} ${kg >= 1 ? "Kg" : "g"}'),
-              selected: isSelected,
-              selectedColor: primaryColor,
-              labelStyle: GoogleFonts.inter(
-                color: isSelected ? Colors.white : AppColors.textPrimary,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                fontSize: 12,
-              ),
-              onSelected: (_) {
-                setState(() {
-                  _isManualMoneyMode = false;
-                  _weightKg = kg;
-                  _amountBsCtrl.clear();
-                  _amountUsdCtrl.clear();
-                });
-              },
-            );
-          }).toList(),
+        // Chips Rápidos de Peso (0.250kg, 0.500kg, 1.000kg, 2.000kg) - Layout Responsivo
+        Center(
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.center,
+            children: [0.250, 0.500, 1.000, 1.500, 2.000].map((kg) {
+              final isSelected = (_weightKg - kg).abs() < 0.001 && !_isManualMoneyMode;
+              return ChoiceChip(
+                label: Text('${kg >= 1 ? kg.toStringAsFixed(0) : (kg * 1000).toInt()} ${kg >= 1 ? "Kg" : "g"}'),
+                selected: isSelected,
+                selectedColor: primaryColor,
+                labelStyle: GoogleFonts.inter(
+                  color: isSelected ? Colors.white : AppColors.textPrimary,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  fontSize: 12,
+                ),
+                onSelected: (_) {
+                  setState(() {
+                    _isManualMoneyMode = false;
+                    _weightKg = kg;
+                    _amountBsCtrl.clear();
+                    _amountUsdCtrl.clear();
+                  });
+                },
+              );
+            }).toList(),
+          ),
         ),
         const SizedBox(height: 16),
 

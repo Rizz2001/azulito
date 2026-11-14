@@ -1,4 +1,19 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Permisos de Red para Supabase Realtime y Sincronización Offline-First -->
+    <uses-permission android:name="android.intent.permission.INTERNET"/>
+    <uses-permission android:name="android.intent.permission.ACCESS_NETWORK_STATE"/>
+
+    <!-- Permisos de Cámara para Escáner de Código de Barras Móvil -->
+    <uses-permission android:name="android.intent.permission.CAMERA"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
+
+    <!-- Permisos de Bluetooth para Impresoras Térmicas ESC/POS Móviles -->
+    <uses-permission android:name="android.intent.permission.BLUETOOTH"/>
+    <uses-permission android:name="android.intent.permission.BLUETOOTH_ADMIN"/>
+    <uses-permission android:name="android.intent.permission.BLUETOOTH_CONNECT"/>
+    <uses-permission android:name="android.intent.permission.BLUETOOTH_SCAN"/>
+
     <application
         android:label="azulito"
         android:name="${applicationName}"

@@ -112,3 +112,31 @@ Al tocar un producto que dispone de múltiples presentaciones (cajas/bultos), va
 - **Control para Pesables:** Teclado numérico táctil integrado o input formateado para balanzas electrónicas (ej. `1.325 kg`).
 - **Barra Inferior Fija:** Selector de cantidad `- 1 +` y botón prominente "Agregar a la Orden" con subtotal dinámico actualizado al milisegundo.
 
+---
+
+## 5. Arquitectura Responsiva Multidispositivo y Blindaje Anti-Text-Clipping (Inspirado en 5 Repositorios Open-Source)
+
+Para garantizar legibilidad absoluta y **cero desbordamientos de texto (Zero Text-Clipping)** en resoluciones extremas (desde móviles de 375px hasta monitores 4K y montos largos en Bolívares `Bs. 999.999,99`), la aplicación adopta la ingeniería de 5 repositorios canónicos de Flutter:
+
+### 5.1 Inyección y Referencia de los 5 Repositorios de GitHub
+1. **`Codelessly/ResponsiveFramework` (`responsive_framework`)**:
+   - Envuelve el árbol en `ResponsiveBreakpoints.builder` con puntos de quiebre canónicos:
+     - `MOBILE`: 0 a 600 px
+     - `TABLET`: 601 a 900 px
+     - `DESKTOP`: 901 a 1440 px
+     - `4K`: 1441 px en adelante.
+   - Aplica `ResponsiveScaledBox` y `ResponsiveValue` en dispositivos ultra-compactos para escalar armónicamente sin overflow.
+2. **`simc/auto_size_text` (`auto_size_text`)**:
+   - Reemplaza de forma obligatoria los `Text()` rígidos dentro de píldoras, chips, badges de inventario y etiquetas numéricas por `AutoSizeText` con `minFontSize: 9`, `stepGranularity: 0.5`, `maxLines: 1` y `TextOverflow.ellipsis`.
+3. **`letsar/flutter_staggered_grid_view` (`flutter_staggered_grid_view`)**:
+   - Reemplaza `GridView` de `childAspectRatio` fijo por `AlignedGridView.extent` o `AlignedGridView.count`. Las tarjetas de productos e indicadores KPI calculan su altura de manera elástica según su contenido exacto, eliminando el corte del texto inferior o de los montos bimoneda.
+4. **`gskinnerTeam/flutter-folio` (Patrón de Arquitectura Fluida)**:
+   - Prohibición estricta de `width` o `height` fijos en contenedores que alojen texto variable. Empleo de `BoxConstraints(minHeight: ...)` + `Padding` elástico + `FittedBox(fit: BoxFit.scaleDown)` para que los textos nunca se asfixien.
+5. **`abuanwar072/Flutter-Responsive-Admin-Panel-or-Dashboard` (`ResponsiveLayout`)**:
+   - Helper universal `ResponsiveLayout(mobile: ..., tablet: ..., desktop: ...)` sustentado en `LayoutBuilder` para conmutar limpiamente la distribución espacial de las vistas sin saltos bruscos ni lógica dispersa.
+
+### 5.2 Las 4 Leyes Estrictas de Blindaje de Componentes
+- **Ley 1 (Píldoras y Badges Elásticos):** Ninguna píldora (`Container` redondeado) puede tener `height` fijo (ej. `height: 24` o `28` está terminantemente prohibido porque decapita caracteres como `g`, `p`, `q`, `j` o genera *RenderFlex overflow*). Toda píldora o badge debe encapsularse en el widget universal `CleanSoftPill` con `padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5)`, `mainAxisSize: MainAxisSize.min`, y contenido de texto en `Flexible` + `AutoSizeText(maxLines: 1)`.
+- **Ley 2 (Barras Tipo Píldora del Dashboard `Sweet Crumb`):** En las barras horizontales de *Top Selling Products*, nunca meter el texto (`$XX.XX • XX Unidades`) dentro del ancho coloreado de progreso si el porcentaje es bajo (ej. 15% o 30%), porque el texto se saldría de la píldora. La barra debe construirse como un `Stack` de ancho completo (`100%`) con fondo suave redondeado a `30px`, un `FractionallySizedBox(widthFactor: porcentaje)` en el fondo con el color vibrante, y una capa superior en `Row` con el avatar circular a la izquierda y el texto en `AutoSizeText` con badge de alto contraste, garantizando que el texto **siempre tenga el 100% del ancho del contenedor para respirar y jamás se desborde**.
+- **Ley 3 (Precios Bimoneda `$ USD` + `Bs.`):** Todos los montos bimoneda deben estar envueltos en `FittedBox(fit: BoxFit.scaleDown)` o `AutoSizeText` para admitir cifras elevadas en Bolívares sin quebrar las tarjetas de productos, las filas del carrito ni las tablas de cobranza.
+- **Ley 4 (Botones de Acción en Paneles Laterales):** En el panel derecho de `Order Details` (botones `Cliente`, `Descuento`, `Pausar`, `Escáner`), usar siempre `Expanded` con `AutoSizeText(maxLines: 1, minFontSize: 9)` e íconos compactos para evitar truncamientos y desbordamientos en resoluciones como `1366x768` o tablets.

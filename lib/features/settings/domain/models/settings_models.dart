@@ -108,3 +108,4 @@ class ColorPalettePreset {
     required this.tag,
   });
 }
+

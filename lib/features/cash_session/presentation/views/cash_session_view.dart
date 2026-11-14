@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:auto_size_text/auto_size_text.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/clean_soft_pill.dart';
 import '../../domain/models/cash_session_models.dart';
 import '../controllers/cash_session_controller.dart';
 import '../../../pos/presentation/controllers/pos_controller.dart';
@@ -46,7 +49,7 @@ class _CashSessionViewState extends ConsumerState<CashSessionView> {
   }
 
   // --------------------------------------------------------------------------
-  // 1. CABECERA DE SESIÓN ACTIVA
+  // 1. CABECERA DE SESIÓN ACTIVA (Layout Responsivo)
   // --------------------------------------------------------------------------
   Widget _buildSessionHeaderCard(
     BuildContext context,
@@ -71,11 +74,15 @@ class _CashSessionViewState extends ConsumerState<CashSessionView> {
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Wrap(
+        spacing: 16,
+        runSpacing: 14,
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           // Info del Turno
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
                 width: 48,
@@ -86,14 +93,14 @@ class _CashSessionViewState extends ConsumerState<CashSessionView> {
                 ),
                 child: Icon(Icons.point_of_sale, color: primaryColor, size: 26),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 14),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
                       Text(
-                        'Sesión de Caja: ${session.cashierName}',
+                        'Sesión: ${session.cashierName}',
                         style: GoogleFonts.inter(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
@@ -101,30 +108,26 @@ class _CashSessionViewState extends ConsumerState<CashSessionView> {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: session.isOpen ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
-                          borderRadius: BorderRadius.circular(9999),
-                          border: Border.all(
-                            color: session.isOpen ? AppColors.success : AppColors.danger,
-                          ),
+                      CleanSoftPill(
+                        text: session.isOpen ? 'Turno Abierto' : 'Turno Cerrado',
+                        prefix: Icon(
+                          session.isOpen ? Icons.check_circle : Icons.cancel,
+                          size: 13,
+                          color: session.isOpen ? AppColors.success : AppColors.danger,
                         ),
-                        child: Text(
-                          session.isOpen ? '🟢 Turno Abierto' : '🔴 Turno Cerrado',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: session.isOpen ? AppColors.success : AppColors.danger,
-                          ),
-                        ),
+                        backgroundColor: session.isOpen ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
+                        textColor: session.isOpen ? AppColors.success : AppColors.danger,
+                        borderColor: session.isOpen ? AppColors.success.withOpacity(0.5) : AppColors.danger.withOpacity(0.5),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Apertura: ${dateFormat.format(session.openedAt)} • Base Inicial: \$${session.openingCashUsd.toStringAsFixed(2)} / Bs. ${session.openingCashBs.toStringAsFixed(2)}',
-                    style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary),
+                    'Apertura: ${dateFormat.format(session.openedAt)} • Base: \$${session.openingCashUsd.toStringAsFixed(2)} / Bs. ${session.openingCashBs.toStringAsFixed(2)}',
+                    style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary),
                   ),
                 ],
               ),
@@ -132,7 +135,9 @@ class _CashSessionViewState extends ConsumerState<CashSessionView> {
           ),
 
           // Botones de Acción
-          Row(
+          Wrap(
+            spacing: 10,
+            runSpacing: 8,
             children: [
               OutlinedButton.icon(
                 icon: const Icon(Icons.swap_horiz, size: 18),
@@ -145,7 +150,6 @@ class _CashSessionViewState extends ConsumerState<CashSessionView> {
                 ),
                 onPressed: () => _showMovementDialog(context, rate),
               ),
-              const SizedBox(width: 12),
               ElevatedButton.icon(
                 icon: const Icon(Icons.assessment, size: 18),
                 label: const Text('Arqueo de Caja (Corte X / Z)'),
@@ -165,7 +169,7 @@ class _CashSessionViewState extends ConsumerState<CashSessionView> {
   }
 
   // --------------------------------------------------------------------------
-  // 2. CUADRÍCULA DE TARJETAS DE BALANCES (Clean Soft UI)
+  // 2. CUADRÍCULA DE TARJETAS DE BALANCES (AlignedGridView - letsar/flutter_staggered_grid_view)
   // --------------------------------------------------------------------------
   Widget _buildBalanceCardsGrid(
     BuildContext context,
@@ -175,48 +179,58 @@ class _CashSessionViewState extends ConsumerState<CashSessionView> {
   ) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isNarrow = constraints.maxWidth < 800;
-        return GridView.count(
-          crossAxisCount: isNarrow ? 2 : 4,
+        final isNarrow = constraints.maxWidth < 900;
+        final isUltraNarrow = constraints.maxWidth < 500;
+        final crossCount = isUltraNarrow ? 1 : (isNarrow ? 2 : 4);
+
+        return AlignedGridView.count(
+          crossAxisCount: crossCount,
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          childAspectRatio: isNarrow ? 1.6 : 1.7,
-          children: [
-            _buildStatCard(
-              title: 'Efectivo USD en Gaveta',
-              mainValue: '\$${sessionState.expectedCashUsdInDrawer.toStringAsFixed(2)}',
-              subtitle: 'Base: \$${sessionState.activeSession.openingCashUsd.toStringAsFixed(2)} + Ventas: \$${sessionState.salesCashUsd.toStringAsFixed(2)}',
-              icon: Icons.attach_money,
-              iconColor: primaryColor,
-              bgColor: const Color(0xFFEFF6FF),
-            ),
-            _buildStatCard(
-              title: 'Efectivo Bs en Gaveta',
-              mainValue: 'Bs. ${sessionState.expectedCashBsInDrawer.toStringAsFixed(2)}',
-              subtitle: 'Base: Bs. ${sessionState.activeSession.openingCashBs.toStringAsFixed(2)} + Ventas: Bs. ${sessionState.salesCashBs.toStringAsFixed(2)}',
-              icon: Icons.payments,
-              iconColor: const Color(0xFF0EA5E9),
-              bgColor: const Color(0xFFF0F9FF),
-            ),
-            _buildStatCard(
-              title: 'Pago Móvil & Bancos (Bs)',
-              mainValue: 'Bs. ${sessionState.pagoMovilTotalBs.toStringAsFixed(2)}',
-              subtitle: '≈ \$${(sessionState.pagoMovilTotalBs / rate).toStringAsFixed(2)} USD cobrados',
-              icon: Icons.phone_android,
-              iconColor: const Color(0xFF8B5CF6),
-              bgColor: const Color(0xFFF5F3FF),
-            ),
-            _buildStatCard(
-              title: 'Punto de Venta / Cashea',
-              mainValue: 'Bs. ${sessionState.posCardTotalBs.toStringAsFixed(2)}',
-              subtitle: 'Crédito/Cashea: \$${sessionState.creditSalesTotalUsd.toStringAsFixed(2)} USD',
-              icon: Icons.credit_card,
-              iconColor: const Color(0xFF10B981),
-              bgColor: const Color(0xFFECFDF5),
-            ),
-          ],
+          itemCount: 4,
+          itemBuilder: (context, index) {
+            switch (index) {
+              case 0:
+                return _buildStatCard(
+                  title: 'Efectivo USD en Gaveta',
+                  mainValue: '\$${sessionState.expectedCashUsdInDrawer.toStringAsFixed(2)}',
+                  subtitle: 'Base: \$${sessionState.activeSession.openingCashUsd.toStringAsFixed(2)} + Ventas: \$${sessionState.salesCashUsd.toStringAsFixed(2)}',
+                  icon: Icons.attach_money,
+                  iconColor: primaryColor,
+                  bgColor: const Color(0xFFEFF6FF),
+                );
+              case 1:
+                return _buildStatCard(
+                  title: 'Efectivo Bs en Gaveta',
+                  mainValue: 'Bs. ${sessionState.expectedCashBsInDrawer.toStringAsFixed(2)}',
+                  subtitle: 'Base: Bs. ${sessionState.activeSession.openingCashBs.toStringAsFixed(2)} + Ventas: Bs. ${sessionState.salesCashBs.toStringAsFixed(2)}',
+                  icon: Icons.payments,
+                  iconColor: const Color(0xFF0EA5E9),
+                  bgColor: const Color(0xFFF0F9FF),
+                );
+              case 2:
+                return _buildStatCard(
+                  title: 'Pago Móvil & Bancos (Bs)',
+                  mainValue: 'Bs. ${sessionState.pagoMovilTotalBs.toStringAsFixed(2)}',
+                  subtitle: '≈ \$${(sessionState.pagoMovilTotalBs / rate).toStringAsFixed(2)} USD cobrados',
+                  icon: Icons.phone_android,
+                  iconColor: const Color(0xFF8B5CF6),
+                  bgColor: const Color(0xFFF5F3FF),
+                );
+              case 3:
+              default:
+                return _buildStatCard(
+                  title: 'Punto de Venta / Cashea',
+                  mainValue: 'Bs. ${sessionState.posCardTotalBs.toStringAsFixed(2)}',
+                  subtitle: 'Crédito/Cashea: \$${sessionState.creditSalesTotalUsd.toStringAsFixed(2)} USD',
+                  icon: Icons.credit_card,
+                  iconColor: const Color(0xFF10B981),
+                  bgColor: const Color(0xFFECFDF5),
+                );
+            }
+          },
         );
       },
     );
@@ -232,6 +246,7 @@ class _CashSessionViewState extends ConsumerState<CashSessionView> {
   }) {
     return Container(
       padding: const EdgeInsets.all(18),
+      constraints: const BoxConstraints(minHeight: 110),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(20),
@@ -239,27 +254,44 @@ class _CashSessionViewState extends ConsumerState<CashSessionView> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(title, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+              Flexible(
+                child: AutoSizeText(
+                  title,
+                  maxLines: 1,
+                  minFontSize: 11,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                ),
+              ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(10)),
-                child: Icon(icon, size: 20, color: iconColor),
+                child: Icon(icon, size: 18, color: iconColor),
               ),
             ],
           ),
-          Text(
-            mainValue,
-            style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
+          const SizedBox(height: 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              mainValue,
+              style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
+            ),
           ),
-          Text(
+          const SizedBox(height: 4),
+          AutoSizeText(
             subtitle,
-            style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary),
+            maxLines: 1,
+            minFontSize: 9,
             overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary),
           ),
         ],
       ),

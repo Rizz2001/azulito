@@ -1311,4 +1311,35 @@
     {
       "name": "jni_util",
       "version": "1.0.0",
-      "dependen
+      "dependencies": [
+        "path"
+      ]
+    },
+    {
+      "name": "petitparser",
+      "version": "7.1.0",
+      "dependencies": [
+        "collection",
+        "meta"
+      ]
+    },
+    {
+      "name": "pointycastle",
+      "version": "4.0.0",
+      "dependencies": [
+        "collection",
+        "convert"
+      ]
+    },
+    {
+      "name": "record_use",
+      "version": "1.1.1",
+      "dependencies": [
+        "collection",
+        "meta",
+        "pub_semver"
+      ]
+    }
+  ],
+  "configVersion": 1
+}

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/clean_soft_pill.dart';
 import '../../../../core/database/sync_service.dart';
 import '../../domain/models/pos_models.dart';
 import '../controllers/pos_controller.dart';
@@ -103,38 +104,69 @@ class _CheckoutModalState extends ConsumerState<CheckoutModal> {
           const Divider(height: 1, color: AppColors.border),
           const SizedBox(height: 16),
 
-          // 2. CUERPO: CONSTRUCTOR DE PAGOS MIXTOS (Izquierda Métodos, Derecha Pagos Aplicados)
+          // 2. CUERPO: CONSTRUCTOR DE PAGOS MIXTOS (Layout Responsivo)
           Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Panel Izquierdo: Formulario de Adición de Método
-                Expanded(
-                  flex: 3,
-                  child: _buildPaymentMethodForm(context, posState, primaryColor, rate, remainingUsd, remainingBs),
-                ),
-                const SizedBox(width: 20),
-                const VerticalDivider(width: 1, color: AppColors.border),
-                const SizedBox(width: 20),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 780;
 
-                // Panel Derecho: Resumen de Pagos Aplicados y Vuelto
-                Expanded(
-                  flex: 2,
-                  child: _buildPaymentsSummaryPanel(
-                    context,
-                    primaryColor,
-                    rate,
-                    coveredUsd,
-                    remainingUsd,
-                    remainingBs,
-                    isFullyCovered,
-                    totalFinalUsd,
-                    totalFinalBs,
-                    igtfAmountUsd,
-                    posState.igtfEnabled && igtfAmountUsd > 0,
-                  ),
-                ),
-              ],
+                if (isNarrow) {
+                  return ListView(
+                    children: [
+                      _buildPaymentMethodForm(context, posState, primaryColor, rate, remainingUsd, remainingBs, isNarrow: true),
+                      const SizedBox(height: 16),
+                      const Divider(height: 1, color: AppColors.border),
+                      const SizedBox(height: 16),
+                      _buildPaymentsSummaryPanel(
+                        context,
+                        primaryColor,
+                        rate,
+                        coveredUsd,
+                        remainingUsd,
+                        remainingBs,
+                        isFullyCovered,
+                        totalFinalUsd,
+                        totalFinalBs,
+                        igtfAmountUsd,
+                        posState.igtfEnabled && igtfAmountUsd > 0,
+                        isNarrow: true,
+                      ),
+                    ],
+                  );
+                }
+
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Panel Izquierdo: Formulario de Adición de Método
+                    Expanded(
+                      flex: 3,
+                      child: _buildPaymentMethodForm(context, posState, primaryColor, rate, remainingUsd, remainingBs),
+                    ),
+                    const SizedBox(width: 20),
+                    const VerticalDivider(width: 1, color: AppColors.border),
+                    const SizedBox(width: 20),
+
+                    // Panel Derecho: Resumen de Pagos Aplicados y Vuelto
+                    Expanded(
+                      flex: 2,
+                      child: _buildPaymentsSummaryPanel(
+                        context,
+                        primaryColor,
+                        rate,
+                        coveredUsd,
+                        remainingUsd,
+                        remainingBs,
+                        isFullyCovered,
+                        totalFinalUsd,
+                        totalFinalBs,
+                        igtfAmountUsd,
+                        posState.igtfEnabled && igtfAmountUsd > 0,
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         ],
@@ -143,7 +175,7 @@ class _CheckoutModalState extends ConsumerState<CheckoutModal> {
   }
 
   // --------------------------------------------------------------------------
-  // 1. CABECERA DEL CHECKOUT
+  // 1. CABECERA DEL CHECKOUT (Layout Responsivo con Wrap)
   // --------------------------------------------------------------------------
   Widget _buildCheckoutHeader(
     BuildContext context,
@@ -154,65 +186,70 @@ class _CheckoutModalState extends ConsumerState<CheckoutModal> {
     double totalFinalBs,
     double igtfAmountUsd,
   ) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Cobro Bimoneda y Pagos Mixtos',
-                  style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                  'Cobro Bimoneda',
+                  style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
                 ),
-                const SizedBox(width: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEFF6FF),
-                    borderRadius: BorderRadius.circular(9999),
-                    border: Border.all(color: AppColors.accent.withOpacity(0.3)),
-                  ),
-                  child: Text(
-                    'Tasa: ${rate.toStringAsFixed(2)} Bs/\$',
-                    style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13, color: primaryColor),
-                  ),
+                const SizedBox(width: 10),
+                CleanSoftPill(
+                  text: 'Tasa: ${rate.toStringAsFixed(2)} Bs/\$',
+                  prefix: const Text('💵', style: TextStyle(fontSize: 12)),
+                  backgroundColor: const Color(0xFFEFF6FF),
+                  textColor: primaryColor,
+                  borderColor: AppColors.accent.withOpacity(0.3),
+                  fontSize: 12,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 ),
               ],
             ),
             const SizedBox(height: 4),
             Text(
               'Cliente: ${posState.customer?.fullName ?? "Consumidor Final"} • Subtotal: \$${posState.discountedSubtotalUsd.toStringAsFixed(2)}',
-              style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary),
+              style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary),
             ),
           ],
         ),
 
         // Total Prominente y Switch IGTF
         Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             // Switch IGTF
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
                 color: AppColors.background,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppColors.border),
               ),
               child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('IGTF (3% en Divisas)', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700)),
+                      Text('IGTF (3%)', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700)),
                       Text(
                         igtfAmountUsd > 0 ? '+\$${igtfAmountUsd.toStringAsFixed(2)}' : 'Inactivo',
-                        style: GoogleFonts.inter(fontSize: 11, color: igtfAmountUsd > 0 ? AppColors.warning : AppColors.textSecondary),
+                        style: GoogleFonts.inter(fontSize: 10, color: igtfAmountUsd > 0 ? AppColors.warning : AppColors.textSecondary),
                       ),
                     ],
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   Switch.adaptive(
                     value: posState.igtfEnabled,
                     activeColor: primaryColor,
@@ -221,22 +258,27 @@ class _CheckoutModalState extends ConsumerState<CheckoutModal> {
                 ],
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
             // Totales
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  '\$${totalFinalUsd.toStringAsFixed(2)}',
-                  style: GoogleFonts.inter(fontSize: 26, fontWeight: FontWeight.w900, color: primaryColor),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    '\$${totalFinalUsd.toStringAsFixed(2)}',
+                    style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w900, color: primaryColor),
+                  ),
                 ),
                 Text(
                   'Bs. ${totalFinalBs.toStringAsFixed(2)}',
-                  style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
                 ),
               ],
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
             IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
           ],
         ),
@@ -253,8 +295,11 @@ class _CheckoutModalState extends ConsumerState<CheckoutModal> {
     Color primaryColor,
     double rate,
     double remainingUsd,
-    double remainingBs,
-  ) {
+    double remainingBs, {
+    bool isNarrow = false,
+  }) {
+    final formContent = _buildFormContentForTab(context, posState, primaryColor, rate, remainingUsd, remainingBs);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -280,11 +325,14 @@ class _CheckoutModalState extends ConsumerState<CheckoutModal> {
         const SizedBox(height: 16),
 
         // Formulario Específico según la pestaña seleccionada
-        Expanded(
-          child: SingleChildScrollView(
-            child: _buildFormContentForTab(context, posState, primaryColor, rate, remainingUsd, remainingBs),
+        if (isNarrow)
+          formContent
+        else
+          Expanded(
+            child: SingleChildScrollView(
+              child: formContent,
+            ),
           ),
-        ),
       ],
     );
   }
@@ -972,8 +1020,69 @@ class _CheckoutModalState extends ConsumerState<CheckoutModal> {
     double totalFinalUsd,
     double totalFinalBs,
     double igtfAmountUsd,
-    bool igtfApplied,
-  ) {
+    bool igtfApplied, {
+    bool isNarrow = false,
+  }) {
+    final listWidget = _payments.isEmpty
+        ? Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.payment, size: 36, color: AppColors.textSecondary.withOpacity(0.4)),
+                  const SizedBox(height: 8),
+                  Text('No has registrado abonos', style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 13)),
+                ],
+              ),
+            ),
+          )
+        : ListView.separated(
+            shrinkWrap: isNarrow,
+            physics: isNarrow ? const NeverScrollableScrollPhysics() : null,
+            itemCount: _payments.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 6),
+            itemBuilder: (context, index) {
+              final p = _payments[index];
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(p.methodLabel, style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13)),
+                          if (p.referenceNumber != null)
+                            Text('Ref: ${p.referenceNumber}', style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary)),
+                        ],
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '\$${p.amountUsdEquivalent.toStringAsFixed(2)}',
+                          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, color: primaryColor),
+                        ),
+                        if (p.currency == 'VES')
+                          Text('Bs. ${p.amountOriginal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 10, color: AppColors.textSecondary)),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.danger),
+                      onPressed: () => setState(() => _payments.removeAt(index)),
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -981,62 +1090,10 @@ class _CheckoutModalState extends ConsumerState<CheckoutModal> {
         const SizedBox(height: 8),
 
         // Lista de Pagos Parciales
-        Expanded(
-          child: _payments.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.payment, size: 36, color: AppColors.textSecondary.withOpacity(0.4)),
-                      const SizedBox(height: 8),
-                      Text('No has registrado abonos', style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 13)),
-                    ],
-                  ),
-                )
-              : ListView.separated(
-                  itemCount: _payments.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 6),
-                  itemBuilder: (context, index) {
-                    final p = _payments[index];
-                    return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: AppColors.background,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(p.methodLabel, style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13)),
-                                if (p.referenceNumber != null)
-                                  Text('Ref: ${p.referenceNumber}', style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary)),
-                              ],
-                            ),
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                '\$${p.amountUsdEquivalent.toStringAsFixed(2)}',
-                                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, color: primaryColor),
-                              ),
-                              if (p.currency == 'VES')
-                                Text('Bs. ${p.amountOriginal.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 10, color: AppColors.textSecondary)),
-                            ],
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.danger),
-                            onPressed: () => setState(() => _payments.removeAt(index)),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-        ),
+        if (isNarrow)
+          listWidget
+        else
+          Expanded(child: listWidget),
 
         const Divider(height: 16),
 

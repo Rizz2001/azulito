@@ -2,7 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const PORT = 8085;
+let PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 8085;
 const WEB_DIR = path.join(__dirname, '..', 'build', 'web');
 
 const MIME_TYPES = {
@@ -58,6 +58,18 @@ const server = http.createServer((req, res) => {
       res.end(content);
     });
   });
+});
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE' && PORT !== 8085) {
+    console.log(`Puerto ${PORT} en uso, cambiando automáticamente a 8085...`);
+    PORT = 8085;
+    server.listen(PORT, '127.0.0.1', () => {
+      console.log(`Azulito POS Web Servidor corriendo en http://127.0.0.1:${PORT}`);
+    });
+  } else {
+    throw err;
+  }
 });
 
 server.listen(PORT, '127.0.0.1', () => {
